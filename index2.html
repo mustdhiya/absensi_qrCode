@@ -1,31 +1,39 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduTrack - Student Attendance System</title>
+    <title>Must Dhiya - Student Attendance System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f0f4f8;
+            background-color: #f8fafc;
         }
+        
         .page {
             display: none;
         }
-        .active-page {
+        
+        .page.active {
             display: block;
         }
-        .nav-item {
+        
+        .nav-link {
             position: relative;
         }
-        .nav-item.active::after {
+        
+        .nav-link.active {
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        .nav-link.active::after {
             content: '';
             position: absolute;
             bottom: -10px;
@@ -35,30 +43,81 @@
             background-color: #4f46e5;
             border-radius: 3px;
         }
+        
         .card {
             transition: all 0.3s ease;
         }
+        
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .stat-card {
-            border-left: 4px solid;
+        
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            transition: all 0.3s ease;
         }
+        
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .loader {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
         #qr-reader {
             width: 100%;
             max-width: 500px;
             margin: 0 auto;
         }
+        
         #qr-reader__scan_region {
             background: white;
         }
-        .demo-notice {
-            background-color: rgba(255, 193, 7, 0.2);
-            border-left: 4px solid #ffc107;
-            padding: 10px 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
+        
+        #qr-reader__dashboard_section_swaplink {
+            display: none;
         }
     </style>
 </head>
@@ -71,881 +130,956 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
-                    <h1 class="text-xl font-bold text-gray-800">EduTrack</h1>
+                    <h1 class="text-2xl font-bold text-gray-800">Must Dhiya</h1>
                 </div>
-                <div id="user-info" class="flex items-center space-x-4">
-                    <div class="hidden md:block">
-                        <p class="text-sm text-gray-600">Welcome, <span id="username" class="font-medium text-gray-800">Guest</span></p>
+                
+                <div id="login-status" class="hidden md:flex items-center space-x-4">
+                    <span class="text-gray-600">Welcome, <span id="user-name">Guest</span></span>
+                    <button id="logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800 hidden">Logout</button>
+                    <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span id="user-initial" class="text-indigo-600 font-medium">G</span>
                     </div>
-                    <button id="logout-btn" class="hidden px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Logout
-                    </button>
-                    <button id="login-btn" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Login
-                    </button>
                 </div>
+                
+                <button id="mobile-menu-btn" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+            
+            <nav class="container mx-auto px-4 py-2 border-t border-gray-100">
+                <ul class="flex space-x-8">
+                    <li><a href="#" class="nav-link active" data-page="home">Home</a></li>
+                    <li><a href="#" class="nav-link" data-page="attendance">Attendance</a></li>
+                    <li><a href="#" class="nav-link" data-page="results">Results</a></li>
+                    <li><a href="#" class="nav-link" data-page="statistics">Statistics</a></li>
+                </ul>
+            </nav>
+            
+            <div id="mobile-menu" class="hidden md:hidden px-4 py-2 bg-gray-50">
+                <ul class="space-y-2">
+                    <li><a href="#" class="block py-2" data-page="home">Home</a></li>
+                    <li><a href="#" class="block py-2" data-page="attendance">Attendance</a></li>
+                    <li><a href="#" class="block py-2" data-page="results">Results</a></li>
+                    <li><a href="#" class="block py-2" data-page="statistics">Statistics</a></li>
+                    <li class="border-t border-gray-200 mt-2 pt-2">
+                        <button id="mobile-logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800 hidden">Logout</button>
+                    </li>
+                </ul>
             </div>
         </header>
-
-        <!-- Navigation -->
-        <nav class="bg-white shadow-sm">
-            <div class="container mx-auto px-4">
-                <div class="flex space-x-8">
-                    <button class="nav-item active py-4 px-2 text-indigo-600 font-medium" data-page="home">Home</button>
-                    <button class="nav-item py-4 px-2 text-gray-500 font-medium hover:text-indigo-600" data-page="attendance">Attendance</button>
-                    <button class="nav-item py-4 px-2 text-gray-500 font-medium hover:text-indigo-600" data-page="results">Results</button>
-                    <button class="nav-item py-4 px-2 text-gray-500 font-medium hover:text-indigo-600" data-page="statistics">Statistics</button>
-                </div>
-            </div>
-        </nav>
-
+        
         <!-- Main Content -->
         <main class="flex-grow container mx-auto px-4 py-8">
             <!-- Home Page -->
-            <div id="home" class="page active-page">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome to EduTrack</h2>
-                    <p class="text-lg text-gray-600 max-w-2xl mx-auto">A modern solution for tracking student attendance using QR codes</p>
-                </div>
-
-                <div class="grid md:grid-cols-3 gap-8 mb-12">
-                    <div class="card bg-white rounded-lg shadow-md p-6">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-100 text-indigo-600 mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">QR Code Attendance</h3>
-                        <p class="text-gray-600">Quickly mark attendance by scanning QR codes. No more manual roll calls or paperwork.</p>
+            <div id="home-page" class="page active fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Student Attendance Management System</h2>
+                        <p class="text-lg text-gray-600">Track attendance efficiently with QR code technology</p>
                     </div>
-
-                    <div class="card bg-white rounded-lg shadow-md p-6">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-100 text-indigo-600 mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
+                    
+                    <div id="login-section" class="bg-white rounded-lg shadow-md p-8 mb-8">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-6">Login</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="your@email.com">
+                            </div>
+                            
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="remember" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
+                                </div>
+                                
+                                <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800">Forgot password?</a>
+                            </div>
+                            
+                            <button id="login-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Login</button>
+                            
+                            <div class="text-center text-sm text-gray-500">
+                                <span>For demo purposes, click login to continue</span>
+                            </div>
                         </div>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">Customizable Settings</h3>
-                        <p class="text-gray-600">Set attendance parameters like skipping days or weeks to match your institution's policies.</p>
                     </div>
-
-                    <div class="card bg-white rounded-lg shadow-md p-6">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-100 text-indigo-600 mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
+                    
+                    <div id="features-section" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="card bg-white rounded-lg shadow-md p-6">
+                            <div class="text-indigo-600 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">QR Code Attendance</h3>
+                            <p class="text-gray-600">Generate and scan QR codes for quick and accurate attendance tracking.</p>
                         </div>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">Visual Analytics</h3>
-                        <p class="text-gray-600">View attendance data through intuitive charts and graphs for better insights.</p>
+                        
+                        <div class="card bg-white rounded-lg shadow-md p-6">
+                            <div class="text-indigo-600 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Detailed Analytics</h3>
+                            <p class="text-gray-600">View comprehensive attendance statistics and generate insightful reports.</p>
+                        </div>
+                        
+                        <div class="card bg-white rounded-lg shadow-md p-6">
+                            <div class="text-indigo-600 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Customizable Settings</h3>
+                            <p class="text-gray-600">Configure attendance parameters to suit your specific requirements.</p>
+                        </div>
                     </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-md p-8 mb-8">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Get Started</h3>
-                    <p class="text-gray-600 mb-6">To begin using EduTrack, please log in with your institutional credentials. If you're new, contact your administrator for access.</p>
-                    <button id="home-login-btn" class="px-6 py-3 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Login to Continue
-                    </button>
                 </div>
             </div>
-
+            
             <!-- Attendance Page -->
-            <div id="attendance" class="page">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Management</h2>
-                    <p class="text-gray-600">Generate or scan QR codes to mark attendance</p>
-                </div>
-
-                <div class="demo-notice">
-                    <p class="text-sm font-medium">Demo Version: QR code generation and scanning functionality is simulated for demonstration purposes.</p>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-8">
-                    <!-- QR Code Generator -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Generate Attendance QR Code</h3>
-                        
-                        <div class="mb-4">
-                            <label for="class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-                            <select id="class-select" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Select a class</option>
-                                <option value="CS101">CS101 - Introduction to Programming</option>
-                                <option value="MATH202">MATH202 - Advanced Calculus</option>
-                                <option value="PHYS101">PHYS101 - Physics I</option>
-                                <option value="ENG205">ENG205 - Technical Writing</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="session-date" class="block text-sm font-medium text-gray-700 mb-1">Session Date</label>
-                            <input type="date" id="session-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="attendance-settings" class="block text-sm font-medium text-gray-700 mb-1">Attendance Settings</label>
-                            <div class="grid grid-cols-2 gap-4">
+            <div id="attendance-page" class="page fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Management</h2>
+                        <p class="text-gray-600">Generate and scan QR codes for attendance tracking</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- QR Code Generator -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Generate QR Code</h3>
+                            
+                            <div class="space-y-4">
                                 <div>
-                                    <label for="skip-days" class="block text-xs text-gray-500 mb-1">Skip Days</label>
-                                    <input type="number" id="skip-days" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                    <label for="class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
+                                    <select id="class-select" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Select a class</option>
+                                        <option value="cs101">CS101 - Introduction to Programming</option>
+                                        <option value="cs201">CS201 - Data Structures</option>
+                                        <option value="math101">MATH101 - Calculus I</option>
+                                        <option value="eng101">ENG101 - English Composition</option>
+                                    </select>
                                 </div>
+                                
                                 <div>
-                                    <label for="skip-weeks" class="block text-xs text-gray-500 mb-1">Skip Weeks</label>
-                                    <input type="number" id="skip-weeks" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                    <label for="session-type" class="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
+                                    <select id="session-type" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="lecture">Lecture</option>
+                                        <option value="lab">Lab</option>
+                                        <option value="tutorial">Tutorial</option>
+                                        <option value="exam">Exam</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="valid-duration" class="block text-sm font-medium text-gray-700 mb-1">Valid Duration (minutes)</label>
+                                    <input type="number" id="valid-duration" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="15" min="1" max="120">
+                                </div>
+                                
+                                <div>
+                                    <label for="skip-days" class="block text-sm font-medium text-gray-700 mb-1">Skip Days</label>
+                                    <div class="flex space-x-2">
+                                        <input type="number" id="skip-days" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="0" min="0" max="30">
+                                        <select id="skip-unit" class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                            <option value="days">Days</option>
+                                            <option value="weeks">Weeks</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <button id="generate-qr-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Generate QR Code</button>
+                            </div>
+                            
+                            <div id="qr-code-container" class="mt-6 hidden">
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center">
+                                    <div id="qr-code" class="mb-4"></div>
+                                    <p class="text-sm text-gray-500 text-center">QR code valid for <span id="qr-valid-time">15</span> minutes</p>
+                                    <div class="mt-4 flex space-x-2">
+                                        <button id="download-qr-btn" class="text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded hover:bg-gray-200 transition duration-300">Download</button>
+                                        <button id="print-qr-btn" class="text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded hover:bg-gray-200 transition duration-300">Print</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="mb-4">
-                            <label for="expiry-time" class="block text-sm font-medium text-gray-700 mb-1">QR Code Expiry (minutes)</label>
-                            <input type="number" id="expiry-time" min="1" value="15" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-
-                        <button id="generate-qr-btn" class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Generate QR Code
-                        </button>
-
-                        <div id="qr-container" class="mt-6 flex flex-col items-center hidden">
-                            <div id="qrcode" class="mb-4"></div>
-                            <p class="text-sm text-gray-600 mb-2">QR Code will expire in <span id="qr-timer" class="font-medium">15:00</span></p>
-                            <button id="download-qr-btn" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                Download QR Code
-                            </button>
+                        
+                        <!-- QR Code Scanner -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Scan QR Code</h3>
+                            
+                            <div id="scanner-container" class="space-y-4">
+                                <p class="text-gray-600 text-sm">Use this scanner to mark attendance by scanning a valid QR code.</p>
+                                
+                                <button id="start-scanner-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Start Scanner</button>
+                                
+                                <div id="qr-reader" class="hidden"></div>
+                                
+                                <div id="scan-result" class="hidden mt-4">
+                                    <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div class="ml-3">
+                                                <h3 class="text-sm font-medium text-green-800">Attendance Marked Successfully</h3>
+                                                <div class="mt-2 text-sm text-green-700">
+                                                    <p>Class: <span id="result-class">CS101</span></p>
+                                                    <p>Date: <span id="result-date">2023-06-15</span></p>
+                                                    <p>Time: <span id="result-time">10:30 AM</span></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- QR Code Scanner -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Scan Attendance QR Code</h3>
-                        
-                        <div class="mb-4">
-                            <label for="student-id" class="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
-                            <input type="text" id="student-id" placeholder="Enter your student ID" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-
-                        <button id="start-scan-btn" class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-4">
-                            Start Scanner
-                        </button>
-
-                        <div id="qr-reader" class="hidden"></div>
-                        
-                        <div id="scan-result" class="mt-4 p-4 rounded-md hidden">
-                            <p id="scan-message" class="text-center"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Attendance Records</h3>
                     
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="attendance-records">
-                                <!-- Records will be added here dynamically -->
-                            </tbody>
-                        </table>
+                    <!-- Recent Attendance Records -->
+                    <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Attendance Records</h3>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="attendance-records">
+                                    <!-- Records will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Results Page -->
-            <div id="results" class="page">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Results</h2>
-                    <p class="text-gray-600">View and analyze attendance data by class</p>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <div class="grid md:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <label for="results-class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-                            <select id="results-class-select" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">All Classes</option>
-                                <option value="CS101">CS101 - Introduction to Programming</option>
-                                <option value="MATH202">MATH202 - Advanced Calculus</option>
-                                <option value="PHYS101">PHYS101 - Physics I</option>
-                                <option value="ENG205">ENG205 - Technical Writing</option>
-                            </select>
+            <div id="results-page" class="page fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Results</h2>
+                        <p class="text-gray-600">View and analyze attendance data for different classes</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label for="results-class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
+                                <select id="results-class-select" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">All Classes</option>
+                                    <option value="cs101">CS101 - Introduction to Programming</option>
+                                    <option value="cs201">CS201 - Data Structures</option>
+                                    <option value="math101">MATH101 - Calculus I</option>
+                                    <option value="eng101">ENG101 - English Composition</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="date-range" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                                <select id="date-range" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="semester">This Semester</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="export-format" class="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+                                <div class="flex space-x-2">
+                                    <select id="export-format" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="pdf">PDF</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="csv">CSV</option>
+                                    </select>
+                                    <button id="export-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300">Export</button>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div>
-                            <label for="results-date-from" class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                            <input type="date" id="results-date-from" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <div id="custom-date-range" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 hidden">
+                            <div>
+                                <label for="start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <input type="date" id="start-date" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            
+                            <div>
+                                <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <input type="date" id="end-date" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
                         </div>
                         
-                        <div>
-                            <label for="results-date-to" class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                            <input type="date" id="results-date-to" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <div class="flex justify-end">
+                            <button id="apply-filters-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300">Apply Filters</button>
                         </div>
                     </div>
                     
-                    <button id="filter-results-btn" class="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Apply Filters
-                    </button>
-                </div>
-
-                <div class="grid md:grid-cols-3 gap-6 mb-8">
-                    <div class="stat-card border-green-500 bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-sm font-medium text-gray-500 uppercase">Total Sessions</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2" id="total-sessions">24</p>
-                        <div class="mt-2 flex items-center text-sm">
-                            <span class="text-green-600 font-medium">+2.5%</span>
-                            <span class="text-gray-500 ml-1">from last month</span>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Attendance Summary</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-green-50 rounded-lg p-4 border border-green-100">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-green-100 rounded-md p-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-green-800">Present</p>
+                                        <p class="text-2xl font-bold text-green-600" id="present-count">24</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-red-100 rounded-md p-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-red-800">Absent</p>
+                                        <p class="text-2xl font-bold text-red-600" id="absent-count">6</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-blue-800">Attendance Rate</p>
+                                        <p class="text-2xl font-bold text-blue-600" id="attendance-rate">80%</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card border-blue-500 bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-sm font-medium text-gray-500 uppercase">Average Attendance</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2" id="avg-attendance">87%</p>
-                        <div class="mt-2 flex items-center text-sm">
-                            <span class="text-blue-600 font-medium">+1.2%</span>
-                            <span class="text-gray-500 ml-1">from last month</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card border-yellow-500 bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-sm font-medium text-gray-500 uppercase">Students at Risk</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2" id="at-risk-students">5</p>
-                        <div class="mt-2 flex items-center text-sm">
-                            <span class="text-yellow-600 font-medium">-2 students</span>
-                            <span class="text-gray-500 ml-1">from last month</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance Summary</h3>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance %</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="attendance-summary">
-                                <!-- Will be populated dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="mt-4 flex justify-between items-center">
-                        <div class="text-sm text-gray-700">
-                            Showing <span id="showing-records">1-10</span> of <span id="total-records">25</span> students
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Previous</button>
-                            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Next</button>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="results-table">
+                                    <!-- Results will be populated here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Statistics Page -->
-            <div id="statistics" class="page">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Statistics</h2>
-                    <p class="text-gray-600">Visual analytics of attendance patterns</p>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-8 mb-8">
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance Trends</h3>
-                        <canvas id="attendance-trend-chart" height="300"></canvas>
+            <div id="statistics-page" class="page fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Attendance Statistics</h2>
+                        <p class="text-gray-600">Visualize attendance data with interactive charts</p>
                     </div>
                     
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Class Comparison</h3>
-                        <canvas id="class-comparison-chart" height="300"></canvas>
-                    </div>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-8">
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance by Day of Week</h3>
-                        <canvas id="day-of-week-chart" height="300"></canvas>
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label for="stats-class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
+                                <select id="stats-class-select" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">All Classes</option>
+                                    <option value="cs101">CS101 - Introduction to Programming</option>
+                                    <option value="cs201">CS201 - Data Structures</option>
+                                    <option value="math101">MATH101 - Calculus I</option>
+                                    <option value="eng101">ENG101 - English Composition</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="stats-period" class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+                                <select id="stats-period" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="week">Weekly</option>
+                                    <option value="month">Monthly</option>
+                                    <option value="semester">Semester</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="chart-type" class="block text-sm font-medium text-gray-700 mb-1">Chart Type</label>
+                                <select id="chart-type" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button id="update-chart-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300">Update Chart</button>
+                        </div>
                     </div>
                     
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance Distribution</h3>
-                        <canvas id="attendance-distribution-chart" height="300"></canvas>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Attendance Trend</h3>
+                            <div class="h-64">
+                                <canvas id="attendance-trend-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Attendance Distribution</h3>
+                            <div class="h-64">
+                                <canvas id="attendance-distribution-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Class Comparison</h3>
+                        <div class="h-64">
+                            <canvas id="class-comparison-chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
-
+        
         <!-- Footer -->
-        <footer class="bg-white border-t border-gray-200 py-6">
+        <footer class="bg-gray-800 text-white py-6">
             <div class="container mx-auto px-4">
                 <div class="flex flex-col md:flex-row justify-between items-center">
                     <div class="mb-4 md:mb-0">
-                        <p class="text-sm text-gray-600">&copy; 2023 EduTrack. All rights reserved.</p>
+                        <div class="flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span class="text-lg font-bold">Must Dhiya</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-1">Student Attendance Management System</p>
                     </div>
-                    <div class="flex space-x-6">
-                        <a href="#" class="text-gray-500 hover:text-indigo-600">
-                            <span class="sr-only">Help Center</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
                             </svg>
                         </a>
-                        <a href="#" class="text-gray-500 hover:text-indigo-600">
-                            <span class="sr-only">Settings</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                             </svg>
                         </a>
-                        <a href="#" class="text-gray-500 hover:text-indigo-600">
-                            <span class="sr-only">Contact</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z"/>
                             </svg>
                         </a>
                     </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400 text-center">
+                    <p>&copy; 2023 Must Dhiya. All rights reserved.</p>
                 </div>
             </div>
         </footer>
-
-        <!-- Login Modal -->
-        <div id="login-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Login to EduTrack</h3>
-                    <button id="close-login-modal" class="text-gray-400 hover:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                
-                <form id="login-form">
-                    <div class="mb-4">
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" id="password" name="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="remember-me" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                            <label for="remember-me" class="ml-2 block text-sm text-gray-900">Remember me</label>
-                        </div>
-                        
-                        <div class="text-sm">
-                            <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">Forgot password?</a>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Sign in
-                        </button>
-                    </div>
-                </form>
-                
-                <div class="mt-4 text-center">
-                    <p class="text-sm text-gray-600">For demo purposes, use:</p>
-                    <p class="text-sm font-medium text-gray-800">Email: demo@edutrack.com</p>
-                    <p class="text-sm font-medium text-gray-800">Password: demo123</p>
-                </div>
-            </div>
-        </div>
     </div>
-
+    
     <script>
         // Sample data for demonstration
         const sampleStudents = [
-            { id: "S1001", name: "John Smith", present: 22, absent: 2, percentage: 91.7, status: "Good" },
-            { id: "S1002", name: "Emma Johnson", present: 24, absent: 0, percentage: 100, status: "Excellent" },
-            { id: "S1003", name: "Michael Brown", present: 18, absent: 6, percentage: 75, status: "At Risk" },
-            { id: "S1004", name: "Sophia Williams", present: 20, absent: 4, percentage: 83.3, status: "Good" },
-            { id: "S1005", name: "James Davis", present: 15, absent: 9, percentage: 62.5, status: "Critical" },
-            { id: "S1006", name: "Olivia Miller", present: 21, absent: 3, percentage: 87.5, status: "Good" },
-            { id: "S1007", name: "Robert Wilson", present: 19, absent: 5, percentage: 79.2, status: "Warning" },
-            { id: "S1008", name: "Ava Moore", present: 23, absent: 1, percentage: 95.8, status: "Excellent" },
-            { id: "S1009", name: "William Taylor", present: 17, absent: 7, percentage: 70.8, status: "At Risk" },
-            { id: "S1010", name: "Isabella Anderson", present: 24, absent: 0, percentage: 100, status: "Excellent" }
+            { id: "S001", name: "John Smith", present: 18, absent: 2 },
+            { id: "S002", name: "Emma Johnson", present: 20, absent: 0 },
+            { id: "S003", name: "Michael Brown", present: 15, absent: 5 },
+            { id: "S004", name: "Sophia Davis", present: 17, absent: 3 },
+            { id: "S005", name: "William Wilson", present: 14, absent: 6 },
+            { id: "S006", name: "Olivia Martinez", present: 19, absent: 1 },
+            { id: "S007", name: "James Taylor", present: 16, absent: 4 },
+            { id: "S008", name: "Ava Anderson", present: 12, absent: 8 },
+            { id: "S009", name: "Alexander Thomas", present: 20, absent: 0 },
+            { id: "S010", name: "Isabella Jackson", present: 13, absent: 7 }
         ];
-
-        const sampleAttendanceRecords = [
-            { studentId: "S1001", class: "CS101", date: "2023-11-15", time: "09:15 AM", status: "Present" },
-            { studentId: "S1002", class: "CS101", date: "2023-11-15", time: "09:10 AM", status: "Present" },
-            { studentId: "S1003", class: "CS101", date: "2023-11-15", time: "09:30 AM", status: "Late" },
-            { studentId: "S1005", class: "CS101", date: "2023-11-15", time: "09:00 AM", status: "Present" },
-            { studentId: "S1007", class: "MATH202", date: "2023-11-14", time: "02:05 PM", status: "Present" },
-            { studentId: "S1008", class: "MATH202", date: "2023-11-14", time: "02:00 PM", status: "Present" },
-            { studentId: "S1010", class: "PHYS101", date: "2023-11-13", time: "11:00 AM", status: "Present" }
+        
+        const sampleAttendance = [
+            { date: "2023-06-15", class: "CS101", session: "Lecture", status: "Present", time: "10:30 AM" },
+            { date: "2023-06-14", class: "MATH101", session: "Tutorial", status: "Present", time: "02:15 PM" },
+            { date: "2023-06-13", class: "ENG101", session: "Lecture", status: "Absent", time: "09:00 AM" },
+            { date: "2023-06-12", class: "CS201", session: "Lab", status: "Present", time: "03:45 PM" },
+            { date: "2023-06-09", class: "CS101", session: "Lecture", status: "Present", time: "10:30 AM" }
         ];
-
+        
+        const sampleClassData = {
+            cs101: { present: 85, absent: 15 },
+            cs201: { present: 78, absent: 22 },
+            math101: { present: 92, absent: 8 },
+            eng101: { present: 80, absent: 20 }
+        };
+        
+        const sampleTrendData = {
+            labels: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"],
+            datasets: [
+                {
+                    label: "Attendance Rate",
+                    data: [75, 82, 88, 85, 90],
+                    borderColor: "#4f46e5",
+                    backgroundColor: "rgba(79, 70, 229, 0.1)",
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        };
+        
         // DOM Elements
-        const navItems = document.querySelectorAll('.nav-item');
+        const navLinks = document.querySelectorAll('.nav-link');
         const pages = document.querySelectorAll('.page');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
         const loginBtn = document.getElementById('login-btn');
-        const homeLoginBtn = document.getElementById('home-login-btn');
         const logoutBtn = document.getElementById('logout-btn');
-        const loginModal = document.getElementById('login-modal');
-        const closeLoginModalBtn = document.getElementById('close-login-modal');
-        const loginForm = document.getElementById('login-form');
+        const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+        const loginSection = document.getElementById('login-section');
+        const loginStatus = document.getElementById('login-status');
+        const userName = document.getElementById('user-name');
+        const userInitial = document.getElementById('user-initial');
         const generateQrBtn = document.getElementById('generate-qr-btn');
-        const qrContainer = document.getElementById('qr-container');
-        const startScanBtn = document.getElementById('start-scan-btn');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        const startScannerBtn = document.getElementById('start-scanner-btn');
         const qrReader = document.getElementById('qr-reader');
         const scanResult = document.getElementById('scan-result');
-        const scanMessage = document.getElementById('scan-message');
-        const filterResultsBtn = document.getElementById('filter-results-btn');
-        const attendanceSummary = document.getElementById('attendance-summary');
+        const dateRange = document.getElementById('date-range');
+        const customDateRange = document.getElementById('custom-date-range');
+        const applyFiltersBtn = document.getElementById('apply-filters-btn');
+        const updateChartBtn = document.getElementById('update-chart-btn');
         const attendanceRecords = document.getElementById('attendance-records');
-
-        // Navigation
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const targetPage = item.getAttribute('data-page');
-                
-                // Update active nav item
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-                
-                // Show target page
-                pages.forEach(page => page.classList.remove('active-page'));
-                document.getElementById(targetPage).classList.add('active-page');
-            });
-        });
-
-        // Login Modal
-        function showLoginModal() {
-            loginModal.classList.remove('hidden');
-        }
-
-        function hideLoginModal() {
-            loginModal.classList.add('hidden');
-        }
-
-        loginBtn.addEventListener('click', showLoginModal);
-        homeLoginBtn.addEventListener('click', showLoginModal);
-        closeLoginModalBtn.addEventListener('click', hideLoginModal);
-
-        // Login Form
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            // Simple demo login
-            if (email === 'demo@edutrack.com' && password === 'demo123') {
-                document.getElementById('username').textContent = 'Demo User';
-                loginBtn.classList.add('hidden');
-                logoutBtn.classList.remove('hidden');
-                hideLoginModal();
-            } else {
-                alert('Invalid credentials. Please use the demo account.');
-            }
-        });
-
-        // Logout
-        logoutBtn.addEventListener('click', () => {
-            document.getElementById('username').textContent = 'Guest';
-            loginBtn.classList.remove('hidden');
-            logoutBtn.classList.add('hidden');
-        });
-
-        // QR Code Generator
-        generateQrBtn.addEventListener('click', () => {
-            const classValue = document.getElementById('class-select').value;
-            const sessionDate = document.getElementById('session-date').value;
-            
-            if (!classValue || !sessionDate) {
-                alert('Please select a class and date.');
-                return;
-            }
-            
-            const qrData = JSON.stringify({
-                class: classValue,
-                date: sessionDate,
-                skipDays: document.getElementById('skip-days').value,
-                skipWeeks: document.getElementById('skip-weeks').value,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Generate QR Code
-            const qrcodeElement = document.getElementById('qrcode');
-            qrcodeElement.innerHTML = '';
-            
-            QRCode.toCanvas(qrcodeElement, qrData, { width: 200 }, function (error) {
-                if (error) console.error(error);
-                console.log('QR code generated!');
-            });
-            
-            qrContainer.classList.remove('hidden');
-            
-            // Set timer
-            let timeLeft = parseInt(document.getElementById('expiry-time').value) * 60;
-            const qrTimer = document.getElementById('qr-timer');
-            
-            const timerInterval = setInterval(() => {
-                timeLeft--;
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                qrTimer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    qrContainer.classList.add('hidden');
-                }
-            }, 1000);
-        });
-
-        // QR Code Scanner
-        startScanBtn.addEventListener('click', () => {
-            const studentId = document.getElementById('student-id').value;
-            
-            if (!studentId) {
-                alert('Please enter your student ID.');
-                return;
-            }
-            
-            qrReader.classList.remove('hidden');
-            
-            // Initialize QR scanner
-            const html5QrCode = new Html5Qrcode("qr-reader");
-            const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, qrConfig, onScanSuccess, onScanFailure)
-                .catch(err => {
-                    console.log(`QR Code scanning failed to start: ${err}`);
+        const resultsTable = document.getElementById('results-table');
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Navigation
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetPage = this.getAttribute('data-page');
                     
-                    // For demo purposes, simulate a successful scan after 3 seconds
-                    setTimeout(() => {
-                        html5QrCode.stop();
-                        simulateScanSuccess(studentId);
-                    }, 3000);
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    pages.forEach(page => {
+                        page.classList.remove('active');
+                        if (page.id === `${targetPage}-page`) {
+                            page.classList.add('active');
+                        }
+                    });
+                    
+                    // Initialize charts if statistics page is active
+                    if (targetPage === 'statistics') {
+                        initCharts();
+                    }
+                    
+                    // Close mobile menu if open
+                    mobileMenu.classList.add('hidden');
                 });
-                
-            function onScanSuccess(decodedText, decodedResult) {
-                html5QrCode.stop();
-                processQrData(decodedText, studentId);
-            }
-            
-            function onScanFailure(error) {
-                console.warn(`QR Code scanning failed: ${error}`);
-            }
-        });
-
-        function simulateScanSuccess(studentId) {
-            const mockQrData = JSON.stringify({
-                class: "CS101",
-                date: new Date().toISOString().split('T')[0],
-                skipDays: 0,
-                skipWeeks: 0,
-                timestamp: new Date().toISOString()
             });
             
-            processQrData(mockQrData, studentId);
+            // Mobile menu toggle
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // Login functionality
+            loginBtn.addEventListener('click', function() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                // Simple validation
+                if (email && password) {
+                    // Simulate login
+                    loginSection.classList.add('hidden');
+                    loginStatus.classList.remove('hidden');
+                    logoutBtn.classList.remove('hidden');
+                    mobileLogoutBtn.classList.remove('hidden');
+                    
+                    // Set user info
+                    const name = email.split('@')[0];
+                    userName.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+                    userInitial.textContent = name.charAt(0).toUpperCase();
+                    
+                    // Show features section
+                    document.getElementById('features-section').classList.remove('hidden');
+                }
+            });
+            
+            // Logout functionality
+            logoutBtn.addEventListener('click', handleLogout);
+            mobileLogoutBtn.addEventListener('click', handleLogout);
+            
+            // QR Code generation
+            generateQrBtn.addEventListener('click', function() {
+                const classValue = document.getElementById('class-select').value;
+                const sessionType = document.getElementById('session-type').value;
+                const validDuration = document.getElementById('valid-duration').value;
+                
+                if (classValue) {
+                    qrCodeContainer.classList.remove('hidden');
+                    document.getElementById('qr-valid-time').textContent = validDuration;
+                    
+                    // Generate QR code
+                    const qrData = JSON.stringify({
+                        class: classValue,
+                        session: sessionType,
+                        timestamp: new Date().toISOString(),
+                        validFor: validDuration
+                    });
+                    
+                    const qrCode = document.getElementById('qr-code');
+                    qrCode.innerHTML = '';
+                    
+                    new QRCode(qrCode, {
+                        text: qrData,
+                        width: 200,
+                        height: 200,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            });
+            
+            // QR Code scanner
+            startScannerBtn.addEventListener('click', function() {
+                qrReader.classList.remove('hidden');
+                scanResult.classList.add('hidden');
+                
+                const html5QrCode = new Html5Qrcode("qr-reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                
+                html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+                    .catch(err => {
+                        console.error("Error starting scanner:", err);
+                    });
+                
+                function onScanSuccess(decodedText) {
+                    // Stop scanning
+                    html5QrCode.stop().then(() => {
+                        console.log("Scanner stopped");
+                    }).catch(err => {
+                        console.error("Error stopping scanner:", err);
+                    });
+                    
+                    // Process QR code data
+                    try {
+                        const data = JSON.parse(decodedText);
+                        
+                        // Display result
+                        document.getElementById('result-class').textContent = data.class;
+                        document.getElementById('result-date').textContent = new Date().toLocaleDateString();
+                        document.getElementById('result-time').textContent = new Date().toLocaleTimeString();
+                        
+                        qrReader.classList.add('hidden');
+                        scanResult.classList.remove('hidden');
+                    } catch (e) {
+                        console.error("Invalid QR code data:", e);
+                    }
+                }
+            });
+            
+            // Date range change
+            dateRange.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customDateRange.classList.remove('hidden');
+                } else {
+                    customDateRange.classList.add('hidden');
+                }
+            });
+            
+            // Apply filters
+            applyFiltersBtn.addEventListener('click', function() {
+                populateResultsTable();
+                updateSummaryStats();
+            });
+            
+            // Update chart
+            updateChartBtn.addEventListener('click', function() {
+                updateCharts();
+            });
+            
+            // Populate attendance records
+            populateAttendanceRecords();
+            
+            // Populate results table
+            populateResultsTable();
+            
+            // Update summary stats
+            updateSummaryStats();
+            
+            // Initialize charts
+            initCharts();
+            
+            // Download QR code
+            document.getElementById('download-qr-btn').addEventListener('click', function() {
+                const qrCanvas = document.querySelector('#qr-code canvas');
+                if (qrCanvas) {
+                    const link = document.createElement('a');
+                    link.download = 'attendance-qr.png';
+                    link.href = qrCanvas.toDataURL('image/png');
+                    link.click();
+                }
+            });
+            
+            // Print QR code
+            document.getElementById('print-qr-btn').addEventListener('click', function() {
+                const qrCode = document.getElementById('qr-code');
+                const printWindow = window.open('', '', 'height=500,width=500');
+                printWindow.document.write('<html><head><title>Print QR Code</title>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write('<h1>Attendance QR Code</h1>');
+                printWindow.document.write(qrCode.innerHTML);
+                printWindow.document.close();
+                printWindow.print();
+            });
+        });
+        
+        // Helper functions
+        function handleLogout() {
+            loginSection.classList.remove('hidden');
+            loginStatus.classList.add('hidden');
+            logoutBtn.classList.add('hidden');
+            mobileLogoutBtn.classList.add('hidden');
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
         }
-
-        function processQrData(qrData, studentId) {
-            try {
-                const data = JSON.parse(qrData);
-                
-                // Add to attendance records
-                const now = new Date();
-                const record = {
-                    studentId: studentId,
-                    class: data.class,
-                    date: data.date,
-                    time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    status: "Present"
-                };
-                
-                sampleAttendanceRecords.unshift(record);
-                updateAttendanceRecords();
-                
-                // Show success message
-                scanResult.classList.remove('hidden');
-                scanResult.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
-                scanMessage.textContent = `Attendance marked successfully for ${data.class} on ${data.date}`;
-                
-                qrReader.classList.add('hidden');
-            } catch (error) {
-                console.error("Error processing QR data:", error);
-                
-                scanResult.classList.remove('hidden');
-                scanResult.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
-                scanMessage.textContent = "Invalid QR code. Please try again.";
-            }
-        }
-
-        // Update Attendance Records Table
-        function updateAttendanceRecords() {
+        
+        function populateAttendanceRecords() {
             attendanceRecords.innerHTML = '';
             
-            sampleAttendanceRecords.slice(0, 5).forEach(record => {
+            sampleAttendance.forEach(record => {
                 const row = document.createElement('tr');
                 
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${record.studentId}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.class}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.time}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            ${record.status === 'Present' ? 'bg-green-100 text-green-800' : 
-                            record.status === 'Late' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
-                            ${record.status}
-                        </span>
-                    </td>
-                `;
+                const dateCell = document.createElement('td');
+                dateCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                dateCell.textContent = record.date;
+                row.appendChild(dateCell);
+                
+                const classCell = document.createElement('td');
+                classCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                classCell.textContent = record.class;
+                row.appendChild(classCell);
+                
+                const sessionCell = document.createElement('td');
+                sessionCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                sessionCell.textContent = record.session;
+                row.appendChild(sessionCell);
+                
+                const statusCell = document.createElement('td');
+                statusCell.className = 'px-6 py-4 whitespace-nowrap text-sm';
+                
+                if (record.status === 'Present') {
+                    statusCell.innerHTML = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span>`;
+                } else {
+                    statusCell.innerHTML = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Absent</span>`;
+                }
+                
+                row.appendChild(statusCell);
+                
+                const timeCell = document.createElement('td');
+                timeCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                timeCell.textContent = record.time;
+                row.appendChild(timeCell);
                 
                 attendanceRecords.appendChild(row);
             });
         }
-
-        // Filter Results
-        filterResultsBtn.addEventListener('click', () => {
-            const selectedClass = document.getElementById('results-class-select').value;
-            updateAttendanceSummary(selectedClass);
+        
+        function populateResultsTable() {
+            resultsTable.innerHTML = '';
             
-            // Update stats based on filter
-            if (selectedClass === 'CS101') {
-                document.getElementById('total-sessions').textContent = '12';
-                document.getElementById('avg-attendance').textContent = '83%';
-                document.getElementById('at-risk-students').textContent = '3';
-            } else if (selectedClass === 'MATH202') {
-                document.getElementById('total-sessions').textContent = '10';
-                document.getElementById('avg-attendance').textContent = '91%';
-                document.getElementById('at-risk-students').textContent = '1';
-            } else if (selectedClass === 'PHYS101') {
-                document.getElementById('total-sessions').textContent = '8';
-                document.getElementById('avg-attendance').textContent = '78%';
-                document.getElementById('at-risk-students').textContent = '4';
-            } else if (selectedClass === 'ENG205') {
-                document.getElementById('total-sessions').textContent = '6';
-                document.getElementById('avg-attendance').textContent = '85%';
-                document.getElementById('at-risk-students').textContent = '2';
-            } else {
-                document.getElementById('total-sessions').textContent = '24';
-                document.getElementById('avg-attendance').textContent = '87%';
-                document.getElementById('at-risk-students').textContent = '5';
-            }
-        });
-
-        // Update Attendance Summary Table
-        function updateAttendanceSummary(classFilter = '') {
-            attendanceSummary.innerHTML = '';
-            
-            let filteredStudents = sampleStudents;
-            if (classFilter) {
-                // In a real app, we would filter by class
-                // For demo, we'll just show fewer students for specific classes
-                filteredStudents = sampleStudents.slice(0, 5);
-            }
-            
-            filteredStudents.forEach(student => {
+            sampleStudents.forEach(student => {
                 const row = document.createElement('tr');
                 
-                let statusClass = '';
-                if (student.status === 'Excellent') statusClass = 'bg-green-100 text-green-800';
-                else if (student.status === 'Good') statusClass = 'bg-blue-100 text-blue-800';
-                else if (student.status === 'Warning') statusClass = 'bg-yellow-100 text-yellow-800';
-                else if (student.status === 'At Risk') statusClass = 'bg-orange-100 text-orange-800';
-                else if (student.status === 'Critical') statusClass = 'bg-red-100 text-red-800';
+                const idCell = document.createElement('td');
+                idCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                idCell.textContent = student.id;
+                row.appendChild(idCell);
                 
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.present}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.absent}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.percentage}%</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
-                            ${student.status}
-                        </span>
-                    </td>
-                `;
+                const nameCell = document.createElement('td');
+                nameCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
+                nameCell.textContent = student.name;
+                row.appendChild(nameCell);
                 
-                attendanceSummary.appendChild(row);
+                const presentCell = document.createElement('td');
+                presentCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                presentCell.textContent = student.present;
+                row.appendChild(presentCell);
+                
+                const absentCell = document.createElement('td');
+                absentCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                absentCell.textContent = student.absent;
+                row.appendChild(absentCell);
+                
+                const rateCell = document.createElement('td');
+                rateCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                const rate = Math.round((student.present / (student.present + student.absent)) * 100);
+                rateCell.textContent = `${rate}%`;
+                row.appendChild(rateCell);
+                
+                const detailsCell = document.createElement('td');
+                detailsCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                detailsCell.innerHTML = `<button class="text-indigo-600 hover:text-indigo-900">View</button>`;
+                row.appendChild(detailsCell);
+                
+                resultsTable.appendChild(row);
+            });
+        }
+        
+        function updateSummaryStats() {
+            let totalPresent = 0;
+            let totalAbsent = 0;
+            
+            sampleStudents.forEach(student => {
+                totalPresent += student.present;
+                totalAbsent += student.absent;
             });
             
-            document.getElementById('showing-records').textContent = `1-${filteredStudents.length}`;
-            document.getElementById('total-records').textContent = filteredStudents.length;
+            const attendanceRate = Math.round((totalPresent / (totalPresent + totalAbsent)) * 100);
+            
+            document.getElementById('present-count').textContent = totalPresent;
+            document.getElementById('absent-count').textContent = totalAbsent;
+            document.getElementById('attendance-rate').textContent = `${attendanceRate}%`;
         }
-
-        // Initialize Charts
+        
         function initCharts() {
             // Attendance Trend Chart
             const trendCtx = document.getElementById('attendance-trend-chart').getContext('2d');
-            new Chart(trendCtx, {
+            const trendChart = new Chart(trendCtx, {
                 type: 'line',
-                data: {
-                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8'],
-                    datasets: [{
-                        label: 'Attendance Rate (%)',
-                        data: [92, 88, 85, 90, 87, 91, 89, 93],
-                        borderColor: 'rgb(79, 70, 229)',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
+                data: sampleTrendData,
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'top',
-                        },
-                        title: {
-                            display: false
                         }
                     },
                     scales: {
                         y: {
-                            min: 70,
-                            max: 100
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
                         }
                     }
                 }
             });
-
-            // Class Comparison Chart
-            const comparisonCtx = document.getElementById('class-comparison-chart').getContext('2d');
-            new Chart(comparisonCtx, {
-                type: 'bar',
+            
+            // Attendance Distribution Chart
+            const distributionCtx = document.getElementById('attendance-distribution-chart').getContext('2d');
+            const distributionChart = new Chart(distributionCtx, {
+                type: 'pie',
                 data: {
-                    labels: ['CS101', 'MATH202', 'PHYS101', 'ENG205'],
+                    labels: ['Present', 'Absent'],
                     datasets: [{
-                        label: 'Attendance Rate (%)',
-                        data: [83, 91, 78, 85],
+                        data: [85, 15],
                         backgroundColor: [
-                            'rgba(79, 70, 229, 0.7)',
-                            'rgba(16, 185, 129, 0.7)',
-                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(34, 197, 94, 0.7)',
                             'rgba(239, 68, 68, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(239, 68, 68, 1)'
                         ],
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+            
+            // Class Comparison Chart
+            const comparisonCtx = document.getElementById('class-comparison-chart').getContext('2d');
+            const comparisonChart = new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['CS101', 'CS201', 'MATH101', 'ENG101'],
+                    datasets: [{
+                        label: 'Attendance Rate (%)',
+                        data: [85, 78, 92, 80],
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100
-                        }
-                    }
-                }
-            });
-
-            // Day of Week Chart
-            const dowCtx = document.getElementById('day-of-week-chart').getContext('2d');
-            new Chart(dowCtx, {
-                type: 'radar',
-                data: {
-                    labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                    datasets: [{
-                        label: 'Attendance Rate (%)',
-                        data: [95, 88, 82, 90, 75],
-                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
-                        borderColor: 'rgb(79, 70, 229)',
-                        pointBackgroundColor: 'rgb(79, 70, 229)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgb(79, 70, 229)'
-                    }]
-                },
-                options: {
-                    elements: {
-                        line: {
-                            borderWidth: 3
-                        }
-                    },
-                    scales: {
-                        r: {
-                            angleLines: {
-                                display: true
-                            },
-                            suggestedMin: 50,
-                            suggestedMax: 100
-                        }
-                    }
-                }
-            });
-
-            // Attendance Distribution Chart
-            const distributionCtx = document.getElementById('attendance-distribution-chart').getContext('2d');
-            new Chart(distributionCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Excellent (>95%)', 'Good (85-95%)', 'Average (75-85%)', 'At Risk (65-75%)', 'Critical (<65%)'],
-                    datasets: [{
-                        data: [20, 35, 25, 15, 5],
-                        backgroundColor: [
-                            'rgba(16, 185, 129, 0.7)',
-                            'rgba(59, 130, 246, 0.7)',
-                            'rgba(245, 158, 11, 0.7)',
-                            'rgba(249, 115, 22, 0.7)',
-                            'rgba(239, 68, 68, 0.7)'
-                        ],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right',
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
                         }
                     }
                 }
             });
         }
-
-        // Download QR Code
-        document.getElementById('download-qr-btn').addEventListener('click', () => {
-            const canvas = document.querySelector('#qrcode canvas');
-            if (canvas) {
-                const link = document.createElement('a');
-                link.download = 'attendance-qr.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            }
-        });
-
-        // Initialize the application
-        function init() {
-            updateAttendanceRecords();
-            updateAttendanceSummary();
-            initCharts();
+        
+        function updateCharts() {
+            // This would update the charts based on selected filters
+            // For demo purposes, we'll just show a loading state and then refresh
             
-            // Set today's date as default for date inputs
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('session-date').value = today;
-            document.getElementById('results-date-from').value = today;
-            document.getElementById('results-date-to').value = today;
+            const chartContainers = document.querySelectorAll('.h-64');
+            chartContainers.forEach(container => {
+                container.innerHTML = '<div class="flex items-center justify-center h-full"><div class="loader"></div></div>';
+            });
+            
+            setTimeout(() => {
+                initCharts();
+            }, 1000);
         }
-
-        // Run initialization
-        init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9463451695f59c20',t:'MTc0ODMyNTM5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9465fd78a1245c8a',t:'MTc0ODM1MzkxOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
