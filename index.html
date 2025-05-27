@@ -1,0 +1,1067 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Must Dhiya - QR Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@zxing/library@0.19.1"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .nav-link {
+            position: relative;
+        }
+        
+        .nav-link.active {
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #4f46e5;
+        }
+        
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 0;
+            padding-bottom: 75%;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        
+        #scanner-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        
+        #scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #4f46e5;
+            border-radius: 10px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        
+        .card {
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        
+        .dropdown-item {
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .attendance-card {
+            border-left: 4px solid;
+        }
+        
+        .attendance-card.present {
+            border-color: #10b981;
+        }
+        
+        .attendance-card.absent {
+            border-color: #ef4444;
+        }
+        
+        .attendance-card.late {
+            border-color: #f59e0b;
+        }
+        
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .btn-success {
+            background-color: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-success:hover {
+            background-color: #059669;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: #4f46e5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateX(150%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-800">Must Dhiya</h1>
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="#" class="nav-link active" data-page="home">Beranda</a>
+                    <a href="#" class="nav-link" data-page="attendance">Kehadiran</a>
+                    <a href="#" class="nav-link" data-page="results">Hasil</a>
+                    <a href="#" class="nav-link" data-page="statistics">Statistik</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="dropdown">
+                        <button class="flex items-center space-x-1 text-gray-700 hover:text-gray-900">
+                            <span>ID</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="dropdown-content">
+                            <a href="#" class="dropdown-item">ID</a>
+                            <a href="#" class="dropdown-item">EN</a>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <span class="text-indigo-600 font-medium">AD</span>
+                            </div>
+                            <span class="hidden md:inline text-gray-700">Admin</span>
+                        </button>
+                        <div class="dropdown-content">
+                            <a href="#" class="dropdown-item">Profil</a>
+                            <a href="#" class="dropdown-item">Pengaturan</a>
+                            <a href="#" class="dropdown-item text-red-500">Keluar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Navigation -->
+        <div class="md:hidden bg-white border-t fixed bottom-0 left-0 right-0 z-10">
+            <div class="flex justify-around">
+                <a href="#" class="flex flex-col items-center py-2 px-3" data-page="home">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    <span class="text-xs mt-1">Beranda</span>
+                </a>
+                <a href="#" class="flex flex-col items-center py-2 px-3" data-page="attendance">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1v-2a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <span class="text-xs mt-1">Kehadiran</span>
+                </a>
+                <a href="#" class="flex flex-col items-center py-2 px-3" data-page="results">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    <span class="text-xs mt-1">Hasil</span>
+                </a>
+                <a href="#" class="flex flex-col items-center py-2 px-3" data-page="statistics">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span class="text-xs mt-1">Statistik</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8 mb-16 md:mb-0">
+            <!-- Home Page -->
+            <div id="home" class="page active">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 mb-8 text-white">
+                        <h2 class="text-3xl font-bold mb-4">Selamat Datang di Must Dhiya</h2>
+                        <p class="text-lg opacity-90 mb-6">Sistem kehadiran berbasis QR yang memudahkan pengelolaan kehadiran siswa secara efisien dan akurat.</p>
+                        <div class="flex flex-wrap gap-4">
+                            <button class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-all" onclick="navigateTo('attendance')">Mulai Pemindaian</button>
+                            <button class="bg-indigo-700 bg-opacity-50 text-white px-6 py-3 rounded-lg font-medium hover:bg-opacity-70 transition-all" onclick="navigateTo('results')">Lihat Hasil</button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6 card">
+                            <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1v-2a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">Pemindaian QR Cepat</h3>
+                            <p class="text-gray-600">Catat kehadiran dengan cepat menggunakan kode QR yang mudah dipindai.</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6 card">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">Parameter Kustom</h3>
+                            <p class="text-gray-600">Sesuaikan parameter kehadiran seperti jumlah hari atau minggu yang diizinkan.</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6 card">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">Statistik Visual</h3>
+                            <p class="text-gray-600">Lihat data kehadiran dalam bentuk grafik dan bagan yang mudah dipahami.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                        <h3 class="text-xl font-semibold mb-4">Kelas Aktif</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jadwal</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Matematika Dasar</div>
+                                            <div class="text-sm text-gray-500">Kelas 10A</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">Senin</div>
+                                            <div class="text-sm text-gray-500">08:00 - 09:30</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">85%</div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-green-600 h-2.5 rounded-full" style="width: 85%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button class="text-indigo-600 hover:text-indigo-900" onclick="navigateTo('attendance')">Mulai Sesi</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Fisika</div>
+                                            <div class="text-sm text-gray-500">Kelas 11B</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">Selasa</div>
+                                            <div class="text-sm text-gray-500">10:00 - 11:30</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">92%</div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-green-600 h-2.5 rounded-full" style="width: 92%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button class="text-indigo-600 hover:text-indigo-900" onclick="navigateTo('attendance')">Mulai Sesi</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Bahasa Indonesia</div>
+                                            <div class="text-sm text-gray-500">Kelas 12C</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">Rabu</div>
+                                            <div class="text-sm text-gray-500">13:00 - 14:30</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">78%</div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 78%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button class="text-indigo-600 hover:text-indigo-900" onclick="navigateTo('attendance')">Mulai Sesi</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Page -->
+            <div id="attendance" class="page">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                        <h2 class="text-2xl font-bold mb-6">Pengaturan Kehadiran</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="class-select" class="block text-sm font-medium text-gray-700 mb-1">Pilih Kelas</label>
+                                <select id="class-select" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="10A">Matematika Dasar - Kelas 10A</option>
+                                    <option value="11B">Fisika - Kelas 11B</option>
+                                    <option value="12C">Bahasa Indonesia - Kelas 12C</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="session-date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Sesi</label>
+                                <input type="date" id="session-date" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <label for="start-time" class="block text-sm font-medium text-gray-700 mb-1">Waktu Mulai</label>
+                                <input type="time" id="start-time" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            
+                            <div>
+                                <label for="end-time" class="block text-sm font-medium text-gray-700 mb-1">Waktu Selesai</label>
+                                <input type="time" id="end-time" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            
+                            <div>
+                                <label for="late-threshold" class="block text-sm font-medium text-gray-700 mb-1">Batas Keterlambatan (menit)</label>
+                                <input type="number" id="late-threshold" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="15">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="allowed-absences" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Ketidakhadiran yang Diizinkan</label>
+                                <input type="number" id="allowed-absences" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="3">
+                            </div>
+                            
+                            <div>
+                                <label for="attendance-period" class="block text-sm font-medium text-gray-700 mb-1">Periode Kehadiran</label>
+                                <select id="attendance-period" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="daily">Harian</option>
+                                    <option value="weekly" selected>Mingguan</option>
+                                    <option value="monthly">Bulanan</option>
+                                    <option value="semester">Semester</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-xl font-semibold mb-4">Pemindai QR</h3>
+                            <div class="mb-4">
+                                <p class="text-gray-600 mb-4">Arahkan kamera ke kode QR untuk memindai kehadiran siswa.</p>
+                                <div id="scanner-container" class="mb-4">
+                                    <video id="scanner-video"></video>
+                                    <div id="scanner-overlay"></div>
+                                </div>
+                                <div class="flex justify-center space-x-4">
+                                    <button id="start-scan" class="btn-primary">Mulai Pemindaian</button>
+                                    <button id="stop-scan" class="btn-secondary" disabled>Hentikan</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-xl font-semibold mb-4">Buat Kode QR</h3>
+                            <div class="mb-4">
+                                <label for="qr-content" class="block text-sm font-medium text-gray-700 mb-1">ID Siswa atau Informasi</label>
+                                <input type="text" id="qr-content" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Masukkan ID siswa atau informasi lainnya">
+                                <div class="flex justify-center mb-4">
+                                    <div id="qrcode" class="border border-gray-200 p-4 rounded-lg"></div>
+                                </div>
+                                <div class="flex justify-center">
+                                    <button id="generate-qr" class="btn-primary">Buat Kode QR</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 mt-8">
+                        <h3 class="text-xl font-semibold mb-4">Kehadiran Terbaru</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Siswa</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance-log" class="bg-white divide-y divide-gray-200">
+                                    <!-- Attendance logs will be added here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Page -->
+            <div id="results" class="page">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                        <h2 class="text-2xl font-bold mb-6">Hasil Kehadiran</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <label for="result-class-select" class="block text-sm font-medium text-gray-700 mb-1">Pilih Kelas</label>
+                                <select id="result-class-select" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateAttendanceResults()">
+                                    <option value="10A">Matematika Dasar - Kelas 10A</option>
+                                    <option value="11B">Fisika - Kelas 11B</option>
+                                    <option value="12C">Bahasa Indonesia - Kelas 12C</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="result-period" class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
+                                <select id="result-period" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateAttendanceResults()">
+                                    <option value="weekly">Mingguan</option>
+                                    <option value="monthly">Bulanan</option>
+                                    <option value="semester">Semester</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="result-date-range" class="block text-sm font-medium text-gray-700 mb-1">Rentang Tanggal</label>
+                                <select id="result-date-range" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateAttendanceResults()">
+                                    <option value="current">Minggu Ini (17-23 Juli 2023)</option>
+                                    <option value="prev1">Minggu Lalu (10-16 Juli 2023)</option>
+                                    <option value="prev2">Dua Minggu Lalu (3-9 Juli 2023)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-green-700 text-sm font-medium">Hadir</p>
+                                        <p class="text-2xl font-bold text-green-800" id="present-count">32</p>
+                                    </div>
+                                    <div class="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-green-600 text-sm mt-2">80% dari total</p>
+                            </div>
+                            
+                            <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-yellow-700 text-sm font-medium">Terlambat</p>
+                                        <p class="text-2xl font-bold text-yellow-800" id="late-count">5</p>
+                                    </div>
+                                    <div class="w-10 h-10 bg-yellow-200 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-yellow-600 text-sm mt-2">12.5% dari total</p>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-red-700 text-sm font-medium">Tidak Hadir</p>
+                                        <p class="text-2xl font-bold text-red-800" id="absent-count">3</p>
+                                    </div>
+                                    <div class="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-red-600 text-sm mt-2">7.5% dari total</p>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Siswa</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Kehadiran</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterlambatan</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ketidakhadiran</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Persentase</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-table" class="bg-white divide-y divide-gray-200">
+                                    <!-- Results will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button class="btn-primary flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Unduh Laporan</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Page -->
+            <div id="statistics" class="page">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                        <h2 class="text-2xl font-bold mb-6">Statistik Kehadiran</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <label for="stats-class-select" class="block text-sm font-medium text-gray-700 mb-1">Pilih Kelas</label>
+                                <select id="stats-class-select" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateStatistics()">
+                                    <option value="all">Semua Kelas</option>
+                                    <option value="10A">Matematika Dasar - Kelas 10A</option>
+                                    <option value="11B">Fisika - Kelas 11B</option>
+                                    <option value="12C">Bahasa Indonesia - Kelas 12C</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="stats-period" class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
+                                <select id="stats-period" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateStatistics()">
+                                    <option value="weekly">Mingguan</option>
+                                    <option value="monthly" selected>Bulanan</option>
+                                    <option value="semester">Semester</option>
+                                    <option value="yearly">Tahunan</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="stats-type" class="block text-sm font-medium text-gray-700 mb-1">Jenis Statistik</label>
+                                <select id="stats-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="updateStatistics()">
+                                    <option value="attendance">Tingkat Kehadiran</option>
+                                    <option value="trend">Tren Kehadiran</option>
+                                    <option value="comparison">Perbandingan Kelas</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-xl font-semibold mb-4">Tingkat Kehadiran</h3>
+                            <div class="h-64">
+                                <canvas id="attendance-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-xl font-semibold mb-4">Tren Kehadiran</h3>
+                            <div class="h-64">
+                                <canvas id="trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                        <h3 class="text-xl font-semibold mb-4">Perbandingan Kelas</h3>
+                        <div class="h-80">
+                            <canvas id="comparison-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-xl font-semibold mb-4">Wawasan Kehadiran</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-lg font-medium mb-3">Hari dengan Kehadiran Tertinggi</h4>
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500 text-sm">Senin</p>
+                                        <p class="text-gray-800 font-medium">95% Kehadiran</p>
+                                    </div>
+                                </div>
+                                
+                                <h4 class="text-lg font-medium mb-3">Hari dengan Kehadiran Terendah</h4>
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500 text-sm">Jumat</p>
+                                        <p class="text-gray-800 font-medium">78% Kehadiran</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="text-lg font-medium mb-3">Waktu Keterlambatan Rata-rata</h4>
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-800 font-medium">8 menit</p>
+                                        <p class="text-gray-500 text-sm">Rata-rata keterlambatan</p>
+                                    </div>
+                                </div>
+                                
+                                <h4 class="text-lg font-medium mb-3">Siswa dengan Kehadiran Terbaik</h4>
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-800 font-medium">Budi Santoso</p>
+                                        <p class="text-gray-500 text-sm">100% Kehadiran</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <span id="notification-message"></span>
+    </div>
+
+    <script>
+        // Navigation
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelectorAll(`[data-page="${pageId}"]`).forEach(link => {
+                link.classList.add('active');
+            });
+        }
+        
+        document.querySelectorAll('.nav-link, [data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+                navigateTo(pageId);
+            });
+        });
+        
+        // QR Code Generator
+        document.getElementById('generate-qr').addEventListener('click', () => {
+            const content = document.getElementById('qr-content').value;
+            if (!content) {
+                showNotification('Silakan masukkan ID siswa atau informasi lainnya');
+                return;
+            }
+            
+            const qrCodeDiv = document.getElementById('qrcode');
+            qrCodeDiv.innerHTML = '';
+            
+            QRCode.toCanvas(qrCodeDiv, content, { width: 200 }, function (error) {
+                if (error) {
+                    showNotification('Gagal membuat kode QR');
+                    console.error(error);
+                } else {
+                    showNotification('Kode QR berhasil dibuat');
+                }
+            });
+        });
+        
+        // QR Code Scanner
+        let codeReader;
+        let selectedDeviceId;
+        
+        document.getElementById('start-scan').addEventListener('click', () => {
+            codeReader = new ZXing.BrowserQRCodeReader();
+            
+            codeReader.getVideoInputDevices()
+                .then((videoInputDevices) => {
+                    if (videoInputDevices.length > 0) {
+                        selectedDeviceId = videoInputDevices[0].deviceId;
+                        
+                        document.getElementById('start-scan').disabled = true;
+                        document.getElementById('stop-scan').disabled = false;
+                        
+                        codeReader.decodeFromVideoDevice(selectedDeviceId, 'scanner-video', (result, err) => {
+                            if (result) {
+                                handleQRScan(result.text);
+                                // Don't stop scanning to allow multiple scans
+                            }
+                            if (err && !(err instanceof ZXing.NotFoundException)) {
+                                console.error(err);
+                                showNotification('Error saat memindai: ' + err);
+                            }
+                        });
+                        
+                        showNotification('Pemindaian dimulai');
+                    } else {
+                        showNotification('Tidak ada kamera yang terdeteksi');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showNotification('Error: ' + err);
+                });
+        });
+        
+        document.getElementById('stop-scan').addEventListener('click', () => {
+            if (codeReader) {
+                codeReader.reset();
+                document.getElementById('start-scan').disabled = false;
+                document.getElementById('stop-scan').disabled = true;
+                showNotification('Pemindaian dihentikan');
+            }
+        });
+        
+        function handleQRScan(scannedData) {
+            // Add to attendance log
+            const attendanceLog = document.getElementById('attendance-log');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            // Simulate student data (in a real app, this would come from a database)
+            const studentNames = {
+                'S001': 'Budi Santoso',
+                'S002': 'Ani Wijaya',
+                'S003': 'Dedi Kurniawan',
+                'S004': 'Siti Rahayu',
+                'S005': 'Rudi Hartono'
+            };
+            
+            const studentId = scannedData;
+            const studentName = studentNames[studentId] || 'Siswa Tidak Dikenal';
+            
+            // Determine status based on time
+            const startTime = document.getElementById('start-time').value;
+            const lateThreshold = parseInt(document.getElementById('late-threshold').value);
+            
+            let status = 'Hadir';
+            let statusClass = 'bg-green-100 text-green-800';
+            
+            if (startTime) {
+                const [startHour, startMinute] = startTime.split(':').map(Number);
+                const startDateTime = new Date();
+                startDateTime.setHours(startHour, startMinute, 0);
+                
+                const diffMinutes = Math.floor((now - startDateTime) / (1000 * 60));
+                
+                if (diffMinutes > lateThreshold) {
+                    status = 'Terlambat';
+                    statusClass = 'bg-yellow-100 text-yellow-800';
+                }
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${studentId}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${studentName}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timeString}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                        ${status}
+                    </span>
+                </td>
+            `;
+            
+            attendanceLog.prepend(row);
+            showNotification(`${studentName} (${studentId}) berhasil tercatat: ${status}`);
+        }
+        
+        // Notification
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notification-message');
+            
+            notificationMessage.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Results Page
+        function updateAttendanceResults() {
+            const classId = document.getElementById('result-class-select').value;
+            const period = document.getElementById('result-period').value;
+            const dateRange = document.getElementById('result-date-range').value;
+            
+            // Update counts (in a real app, these would come from a database)
+            document.getElementById('present-count').textContent = '32';
+            document.getElementById('late-count').textContent = '5';
+            document.getElementById('absent-count').textContent = '3';
+            
+            // Sample data for the results table
+            const resultsData = [
+                { id: 'S001', name: 'Budi Santoso', present: 5, late: 0, absent: 0, percentage: '100%' },
+                { id: 'S002', name: 'Ani Wijaya', present: 4, late: 1, absent: 0, percentage: '90%' },
+                { id: 'S003', name: 'Dedi Kurniawan', present: 3, late: 1, absent: 1, percentage: '70%' },
+                { id: 'S004', name: 'Siti Rahayu', present: 5, late: 0, absent: 0, percentage: '100%' },
+                { id: 'S005', name: 'Rudi Hartono', present: 4, late: 0, absent: 1, percentage: '80%' },
+                { id: 'S006', name: 'Maya Putri', present: 3, late: 2, absent: 0, percentage: '80%' },
+                { id: 'S007', name: 'Agus Setiawan', present: 4, late: 1, absent: 0, percentage: '90%' },
+                { id: 'S008', name: 'Dewi Lestari', present: 4, late: 0, absent: 1, percentage: '80%' }
+            ];
+            
+            const resultsTable = document.getElementById('results-table');
+            resultsTable.innerHTML = '';
+            
+            resultsData.forEach(student => {
+                const row = document.createElement('tr');
+                
+                let percentageClass = 'text-green-600';
+                if (parseFloat(student.percentage) < 80) {
+                    percentageClass = 'text-yellow-600';
+                }
+                if (parseFloat(student.percentage) < 70) {
+                    percentageClass = 'text-red-600';
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.present}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.late}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.absent}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${percentageClass}">${student.percentage}</td>
+                `;
+                
+                resultsTable.appendChild(row);
+            });
+        }
+        
+        // Statistics Page
+        function updateStatistics() {
+            const classId = document.getElementById('stats-class-select').value;
+            const period = document.getElementById('stats-period').value;
+            const type = document.getElementById('stats-type').value;
+            
+            // Attendance Chart
+            const attendanceCtx = document.getElementById('attendance-chart').getContext('2d');
+            const attendanceChart = new Chart(attendanceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hadir', 'Terlambat', 'Tidak Hadir'],
+                    datasets: [{
+                        data: [80, 12.5, 7.5],
+                        backgroundColor: [
+                            '#10b981',
+                            '#f59e0b',
+                            '#ef4444'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Trend Chart
+            const trendCtx = document.getElementById('trend-chart').getContext('2d');
+            const trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'],
+                    datasets: [{
+                        label: 'Tingkat Kehadiran',
+                        data: [85, 82, 88, 90],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 70,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Comparison Chart
+            const comparisonCtx = document.getElementById('comparison-chart').getContext('2d');
+            const comparisonChart = new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Kelas 10A', 'Kelas 11B', 'Kelas 12C'],
+                    datasets: [
+                        {
+                            label: 'Hadir',
+                            data: [85, 78, 82],
+                            backgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Terlambat',
+                            data: [10, 15, 12],
+                            backgroundColor: '#f59e0b'
+                        },
+                        {
+                            label: 'Tidak Hadir',
+                            data: [5, 7, 6],
+                            backgroundColor: '#ef4444'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize the results and statistics on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAttendanceResults();
+            updateStatistics();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'946311385358fd0f',t:'MTc0ODMyMzI3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
